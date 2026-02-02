@@ -4,9 +4,11 @@ A hybrid knowledge graph system that combines static program analysis with LLM-b
 
 ## Overview
 
-Large codebases present a fundamental challenge for AI coding agents: limited context windows. When working across multiple services or repositories, agents struggle to understand dependency chains, cross-service relationships, and historical context. Traditional approaches like passing markdown spec files between agents have limitations—they can't capture the dynamic, interconnected nature of real code.
+Large codebases present a fundamental challenge for AI coding agents: limited context windows. When working across multiple services or repositories, agents struggle to understand dependency chains, cross-service relationships, and historical context. Traditional approaches like passing markdown spec files between agents have limitations — they can't capture the dynamic, interconnected nature of real code.
 
-GAG solves this by building a **Code Knowledge Graph** where nodes represent code entities (services, libraries, functions) and edges represent verified relationships (dependencies, conflicts, interactions). Unlike document-based approaches, this graph combines the precision of static code analysis with the semantic understanding of LLMs. The graph stores both structured facts (extracted from code) and semantic meaning (added by LLMs).
+GAG attempts to solves this by building a **Code Knowledge Graph** where nodes represent code entities (services, libraries, functions) and edges represent verified relationships (dependencies, conflicts, interactions). Unlike document-based approaches, this graph combines the precision of static code analysis with the semantic understanding of LLMs. The graph stores both structured facts (extracted from code) and semantic meaning (added by LLMs).
+
+![](issue-dependency-graph.png)
 
 The key innovation: instead of making LLMs reason about graph structures directly (which they're bad at), we execute graph queries to find relevant information, then **render subgraphs as natural language** before sending to the LLM. This gives agents structured, queryable context without overwhelming their context window.
 
@@ -18,15 +20,14 @@ The key innovation: instead of making LLMs reason about graph structures directl
 - No way to query "what depends on this service?" or "what conflicts exist?"
 - Can't trace transitive dependencies across repos
 - Historical context (debugging sessions, known issues) gets lost
-- LLMs must re-discover relationships that static analysis could prove
 
-**Example**: An agent debugging AuthService latency needs to know:
-- What does AuthService depend on? (KafkaLib, Redis, JWT library)
-- What depends on AuthService? (UserService, PaymentService)
+**Example**: An agent debugging LoginService needs to know:
+- What does LoginService depend on? (KafkaLib, Redis, JWT library)
+- What depends on LoginService? (UserService, PaymentService)
 - Are there version conflicts? (KafkaLib v2.3 conflicts with MetricsLib due to ProtoBuf mismatch)
 - What was tried before? (Previous investigation increased Redis pool size)
 
-This context spans multiple files, repos, and historical knowledge. Markdown specs can't capture these interconnections.
+This context spans multiple files, repos, and historical knowledge. Markdown specs can't capture these interconnections in a non-fragile way.
 
 ## The Solution
 
@@ -52,7 +53,7 @@ Add meaning that static analysis can't extract:
 
 ### Phase 3: Query & Rendering
 When an agent needs context:
-1. Execute graph query (e.g., "get dependencies of AuthService, depth 2")
+1. Execute graph query (e.g., "get dependencies of LoginService, depth 2")
 2. Render subgraph as structured text with priorities
 3. Send compiled text to LLM
 4. LLM reasons about the text, not raw nodes/edges
@@ -68,7 +69,7 @@ Instead of sending raw graph data:
 
 We render it as readable text:
 ```
-AuthService (v2.3.1)
+LoginService (v2.3.1)
 Handles user authentication via JWT tokens
 
 Known Constraints:
@@ -99,11 +100,11 @@ Code Repos → Static Analysis → Graph Database → Graph Query → Render to 
 
 ### Example
 
-For a concrete example of graph-to-text rendering, see [AuthService Example](./docs/examples/authservice-example.md).
+For a concrete example of graph-to-text rendering, see [LoginService Example](./docs/examples/LoginService-example.md).
 
 **Graph structure:**
-- AuthService depends on KafkaLib v2.3 (for event streaming)
-- AuthService depends on MetricsLib v1.5 (for telemetry)
+- LoginService depends on KafkaLib v2.3 (for event streaming)
+- LoginService depends on MetricsLib v1.5 (for telemetry)
 - KafkaLib depends on ProtoBuf v3.21
 - MetricsLib depends on ProtoBuf v3.19
 - **Conflict detected**: Two ProtoBuf versions
